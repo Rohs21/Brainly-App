@@ -2,23 +2,50 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { UserModel } from './db';
 
-
+const JWT_PASS = "@121212";
 const app = express();
+app.use(express.json());
+app.listen(3000);
 
-
-
-app.post ("/api/v1/signup", (req, res) => {
-    //zod validation
+app.post ("/api/v1/signup", async(req, res) => {
+    //zod validation, hash the password
     const username = req.body.username;
     const password = req.body.password;
 
-    UserModel.create({
-        username: username,
-        password: password
-    })
+    try{ 
+        await UserModel.create({
+            username: username,
+            password: password
+        })
+
+        res.json({
+            message: "User Signup successfully",
+        })
+    } catch (error) {
+        res.status(411).json({
+            message: "User already exists"
+        })
+    }
 })
 
-app.post("/api/v1/signin", (req, res) => {
+app.post("/api/v1/signin", async(req, res) => {
+    const username = req.body.username;
+    const password = req.body.password;
+    const existinguser = await UserModel.findOne({
+         username: username, 
+         password: password 
+    });
+    if(existinguser) {
+        const token = jwt.sign({ id: existinguser._id }, JWT_PASS);
+        res.json({
+            message: "User Signin successfully",
+            token: token
+        })
+    } else {
+        res.status(401).json({
+            message:"Incorrect Credentials"
+        });
+    }
 
 })
 
