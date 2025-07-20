@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { UserModel } from './db';
 
 
 const app = express();
@@ -7,7 +8,14 @@ const app = express();
 
 
 app.post ("/api/v1/signup", (req, res) => {
-    
+    //zod validation
+    const username = req.body.username;
+    const password = req.body.password;
+
+    UserModel.create({
+        username: username,
+        password: password
+    })
 })
 
 app.post("/api/v1/signin", (req, res) => {
