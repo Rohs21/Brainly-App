@@ -15,7 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("./db");
-const JWT_PASS = "@121212";
+const middleware_1 = require("./middleware");
+const config_1 = require("./config");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.listen(3000);
@@ -46,7 +47,7 @@ app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, funct
         password: password
     });
     if (existinguser) {
-        const token = jsonwebtoken_1.default.sign({ id: existinguser._id }, JWT_PASS);
+        const token = jsonwebtoken_1.default.sign({ id: existinguser._id }, config_1.JWT_SECRET);
         res.json({
             message: "User Signin successfully",
             token: token
@@ -58,8 +59,20 @@ app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, funct
         });
     }
 }));
-app.post("/api/v1/content", (req, res) => {
-});
+app.post('/api/v1/content/', middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const link = req.body.link;
+    const type = req.body.type;
+    yield db_1.ContentModel.create({
+        link,
+        type,
+        //@ts-ignore-
+        userId: req.userId,
+        tags: []
+    });
+    res.json({
+        msg: "content added"
+    });
+}));
 app.get("/api/v1/content", (req, res) => {
 });
 app.delete("/api/v1/content", (req, res) => {

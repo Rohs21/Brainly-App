@@ -1,8 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { UserModel } from './db';
+import { ContentModel, UserModel } from './db';
+import { userMiddleware } from './middleware';
+import { JWT_SECRET } from "./config"; 
 
-const JWT_PASS = "@121212";
 const app = express();
 app.use(express.json());
 app.listen(3000);
@@ -36,7 +37,7 @@ app.post("/api/v1/signin", async(req, res) => {
          password: password 
     });
     if(existinguser) {
-        const token = jwt.sign({ id: existinguser._id }, JWT_PASS);
+        const token = jwt.sign({ id: existinguser._id }, JWT_SECRET);
         res.json({
             message: "User Signin successfully",
             token: token
@@ -50,7 +51,21 @@ app.post("/api/v1/signin", async(req, res) => {
 })
 
 
-app.post("/api/v1/content",(req,res)=>{
+app.post('/api/v1/content/', userMiddleware, async (req, res) => {
+    const link = req.body.link;
+    const type = req.body.type;
+
+    await ContentModel.create({
+        link,
+        type,
+        //@ts-ignore-
+        userId: req.userId,
+        tags: []
+    })
+
+    res.json({
+        msg: "content added"
+    })
 
 })
 
