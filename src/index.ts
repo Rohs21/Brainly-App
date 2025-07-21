@@ -8,26 +8,20 @@ const app = express();
 app.use(express.json());
 app.listen(3000);
 
-app.post ("/api/v1/signup", async(req, res) => {
-    //zod validation, hash the password
-    const username = req.body.username;
-    const password = req.body.password;
+app.post("/api/v1/signup", async (req, res) => {
+    const { username, password } = req.body;
 
-    try{ 
-        await UserModel.create({
-            username: username,
-            password: password
-        })
+    const existingUser = await UserModel.findOne({ username });
 
-        res.json({
-            message: "User Signup successfully",
-        })
-    } catch (error) {
-        res.status(411).json({
-            message: "User already exists"
-        })
+    if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
     }
-})
+
+    await UserModel.create({ username, password });
+
+    return res.json({ message: "User signed up successfully" });
+});
+
 
 app.post("/api/v1/signin", async(req, res) => {
     const username = req.body.username;
@@ -51,7 +45,7 @@ app.post("/api/v1/signin", async(req, res) => {
 })
 
 
-app.post('/api/v1/content/', userMiddleware, async (req, res) => {
+app.post('/api/v1/content', userMiddleware, async (req, res) => {
     const link = req.body.link;
     const type = req.body.type;
 

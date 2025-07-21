@@ -21,23 +21,13 @@ const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.listen(3000);
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    //zod validation, hash the password
-    const username = req.body.username;
-    const password = req.body.password;
-    try {
-        yield db_1.UserModel.create({
-            username: username,
-            password: password
-        });
-        res.json({
-            message: "User Signup successfully",
-        });
+    const { username, password } = req.body;
+    const existingUser = yield db_1.UserModel.findOne({ username });
+    if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
     }
-    catch (error) {
-        res.status(411).json({
-            message: "User already exists"
-        });
-    }
+    yield db_1.UserModel.create({ username, password });
+    return res.json({ message: "User signed up successfully" });
 }));
 app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const username = req.body.username;
@@ -59,7 +49,7 @@ app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, funct
         });
     }
 }));
-app.post('/api/v1/content/', middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post('/api/v1/content', middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const link = req.body.link;
     const type = req.body.type;
     yield db_1.ContentModel.create({
