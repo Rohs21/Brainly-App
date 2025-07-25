@@ -1,51 +1,114 @@
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { ContentModel, UserModel } from './db';
-import { userMiddleware } from './middleware';
-import { JWT_SECRET } from "./config"; 
+import express from 'express'
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+import { ContentModel, LinkModel, UserModel } from './db'
+import dotenv from 'dotenv'
+import { JWT_SECRET } from './config'
+import { userMiddleware } from './middleware'
+import cors from 'cors'
+import { random } from './utils'
 
-const app = express();
-app.use(express.json());
-app.listen(3000);
 
-app.post("/api/v1/signup", async (req, res) => {
+dotenv.config()
+const app = express()
+app.use(express.json())
+app.use(cors())
+
+const PORT = process.env.PORT || 3000
+
+
+//signup route
+app.post('/api/v1/signup/', async (req, res) => {
+    //use zod 
     const { username, password } = req.body;
 
-    const existingUser = await UserModel.findOne({ username });
-
-    if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
+    if (!username || !password) {
+        return res.status(400).json({
+            msg: "Missing inputs"
+        })
     }
 
-    await UserModel.create({ username, password });
+    try {
+        //hash password
+        const salt = await bcrypt.genSalt(5);
+        const hashPassword = await bcrypt.hash(password, salt);
 
-    return res.json({ message: "User signed up successfully" });
-});
-
-
-app.post("/api/v1/signin", async(req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
-    const existinguser = await UserModel.findOne({
-         username: username, 
-         password: password 
-    });
-    if(existinguser) {
-        const token = jwt.sign({ id: existinguser._id }, JWT_SECRET);
-        res.json({
-            message: "User Signin successfully",
-            token: token
+        await UserModel.create({
+            username: username,
+            password: hashPassword
         })
-    } else {
-        res.status(401).json({
-            message:"Incorrect Credentials"
+
+        return res.status(200).json({
+            msg: "Signed up"
+        })
+    } catch (err: any) {
+        if (err.code === 11000) {
+            // duplicate username
+            return res.status(409).json({
+                msg: "User already exists"
+            });
+        }
+
+        // Other unknown errors
+        console.error("Signup error:", err);
+        return res.status(500).json({
+            msg: "Something went wrong",
+            error: err.message
         });
     }
 
 })
 
+app.post('/api/v1/signin/', async (req, res) => {
+    try {
+        const username = req.body.username
+        const password = req.body.password
 
-app.post('/api/v1/content', userMiddleware, async (req, res) => {
+        if (!username || !password) {
+            return res.status(401).json({
+                msg: "username & password required"
+            })
+        }
+
+        const user = await UserModel.findOne({
+            username
+        })
+
+        if (!user) {
+            return res.status(404).json({
+                msg: "User not found"
+            })
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(password, user.password)
+
+        if (!isPasswordCorrect) {
+            return res.status(401).json({
+                msg: "Invalid password"
+            })
+        }
+
+        const token = jwt.sign({
+            id: user._id,
+            username: user.username
+        }, JWT_SECRET)
+
+        return res.status(200).json({
+            msg: "Login successful",
+            token,
+        });
+
+    } catch (error) {
+        console.log("Signin error");
+
+        return res.status(411).json({
+            msg: "Something went wrong",
+            error: error
+        })
+    }
+})
+
+app.post('/api/v1/content/', userMiddleware, async (req, res) => {
     const link = req.body.link;
     const type = req.body.type;
 
@@ -63,7 +126,6 @@ app.post('/api/v1/content', userMiddleware, async (req, res) => {
 
 })
 
-
 app.get('/api/v1/content/', userMiddleware, async (req, res) => {
     //@ts-ignore
     const userId = req.userId
@@ -76,19 +138,100 @@ app.get('/api/v1/content/', userMiddleware, async (req, res) => {
     })
 })
 
+app.delete('/api/v1/content/', userMiddleware, async (req, res) => {
+    const contentId = req.body.contentId
+
+    await ContentModel.deleteMany({
+        contentId,
+        //@ts-ignore
+        userId: req.userId
+    })
+
+    res.json({
+        msg: "content deleted"
+    })
+})
+
+app.post('/api/v1/brain/share', userMiddleware, async (req, res) => {
+    const share = req.body.share;
+    try {
+        if (share) {
+            //check if link already exits
+            const existingLink = await LinkModel.findOne({
+                //@ts-ignore
+                userId: req.userId
+            })
+            if (existingLink) {
+                return res.json({
+                    hash: existingLink.hash
+                })
+            }
+
+            //if not exists, create one
+            const hash = random(10)
+            await LinkModel.create({
+                //@ts-ignore
+                userId: req.userId,
+                hash
+            })
+
+            res.json({
+                msg: "Updated share link",
+                hash
+            })
+
+        } else {
+            await LinkModel.deleteOne({
+                //@ts-ignore
+                userId: req.userId
+            })
+
+            res.json({
+                msg: "Link removed"
+            })
+        }
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ msg: "Something went wrong" });
+    }
+})
+
+app.get('/api/v1/brain/:shareLink', async (req, res) => {
+    const hash = req.params.shareLink
+
+    //find the link form hash
+    const link = await LinkModel.findOne({
+        hash
+    })
+
+    if (!link) {
+        return res.status(411).json({
+            msg: "Invalid link"
+        })
+    }
+
+    //Fetch content & user details
+    const content = await ContentModel.find({
+        userId: link.userId
+    })
+
+    const user = await UserModel.findOne({
+        _id: link.userId
+    });
+
+    if (!user) {
+        return res.status(411).json({
+            msg: "User not found"
+        })
+    }
+    //if everything is fine, send username & content
+    res.json({
+        username: user.username,
+        content
+    })
+})
 
 
-app.delete("/api/v1/content", (req, res) => {
-
-});
-
-
-app.post("/api/v1/brain/share", (req, res) => {
-
-})   
-
-
-
-app.get("/api/v1/brain/:shareLink", (req, res) => {
-
+app.listen(PORT, () => {
+    console.log(`Server is running at port: ${PORT}`);
 });

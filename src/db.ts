@@ -1,14 +1,16 @@
-import mongoose, {model, Schema} from 'mongoose';
+import mongoose, { Schema, model } from "mongoose";
 
-mongoose.connect("mongodb+srv://rohans212004:Rohans%4021@cluster0.vcoskqh.mongodb.net/Brainly-App")
+mongoose.connect('mongodb://localhost:27017/ByteBrain')
+    .then(() => console.log("db connected")
+    )
 
 const UserSchema = new Schema({
-    username: { type: String, required: true, unique: true },
-    password:  String
-});
+    username: { type: String, unique: true, required: true },
+    password: { type: String, required: true }
+})
 
 
-export const UserModel = model('user',UserSchema);
+export const UserModel = model("User", UserSchema);
 
 
 const ContentSchema = new Schema({
@@ -20,6 +22,10 @@ const ContentSchema = new Schema({
 })
 
 
-export const ContentModel = model("Content", ContentSchema);
+const LinkShare = new Schema({
+    hash: String,
+    userId: [{ type: mongoose.Types.ObjectId, ref: 'User', required: true, unique: true }],
+})
 
-
+export const ContentModel = model("Content", ContentSchema)
+export const LinkModel = model("Share", LinkShare)
