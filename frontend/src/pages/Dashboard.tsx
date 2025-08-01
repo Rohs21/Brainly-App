@@ -64,23 +64,7 @@ function Dashboard() {
             startIcon={<PlusIcon size='lg' />} variant='primary' size='md' text='Add content'></Button>
         </div>
 
-        <div className='flex justify-around items-center flex-col sm:flex-row flex-wrap'>
-          <Card
-            title='My Setup'
-            link='https://x.com/rajscriptsX/status/1942073859769073756'
-            type='twitter'
-            detail=''
-          />
-          {contents.map(({ title, link, type, detail, content }) =>
-            <Card
-              key={content}
-              title={title}
-              link={link}
-              type={type}
-              detail={detail}
-            />
-          )}
-        </div>
+        
       </div>
     </div>
   );
