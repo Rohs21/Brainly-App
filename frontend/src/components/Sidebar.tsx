@@ -19,7 +19,7 @@ export const Sidebar = () => {
                 }}
                 className="flex items-center justify-center mt-5 mb-10 cursor-pointer">
                 <BrainIcon size="xl" />
-                <h1 className="text-4xl font-semibold ml-3">ByteBrain</h1>
+                <h1 className="text-4xl font-semibold ml-3">Brainly</h1>
             </div>
 
             <SidebarContent icon={<TwitterIcon size="lg" />} text="Tweets" />
